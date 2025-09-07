@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refactoring Challenge - Patrón Controller</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap');
+        
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .font-inter { font-family: 'Inter', sans-serif; }
+        
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes pulse-success {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(34, 197, 94, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.8); }
+        }
+        
+        .slide-in { animation: slideIn 0.5s ease-out; }
+        .pulse-success { animation: pulse-success 0.6s ease-in-out; }
+        .shake { animation: shake 0.5s ease-in-out; }
+        .glow { animation: glow 2s ease-in-out infinite; }
+        
+        .code-snippet {
+            background: linear-gradient(135deg, #1e293b, #334155);
+            border: 2px solid #475569;
+            transition: all 0.3s ease;
+        }
+        
+        .code-snippet:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+        }
+        
+        .code-snippet.dragging {
+            opacity: 0.7;
+            transform: rotate(2deg) scale(0.95);
+        }
+        
+        .drop-zone {
+            background: linear-gradient(135deg, #374151, #4b5563);
+            border: 2px dashed #6b7280;
+            transition: all 0.3s ease;
+        }
+        
+        .drop-zone.drag-over {
+            border-color: #10b981;
+            background: linear-gradient(135deg, #065f46, #047857);
+        }
+        
+        .drop-zone.filled {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            border-color: #22c55e;
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 min-h-screen font-inter">
+    <!-- Header -->
+    <div class="container mx-auto px-4 py-6">
+        <div class="text-center mb-8">
+            <div class="flex items-center justify-center mb-4">
+                <div class="text-4xl mr-3">🔧</div>
+                <h1 class="text-4xl font-bold text-white">Refactoring Challenge</h1>
+                <div class="text-4xl ml-3">⚡</div>
+            </div>
+            <p id="subtitle" class="text-xl text-gray-300 mb-4">Transforma el código malo aplicando el patrón Controller</p>
+            
+            <!-- Progress Bar -->
+            <div class="max-w-md mx-auto mb-6">
+                <div class="flex justify-between text-sm text-gray-400 mb-2">
+                    <span>Progreso</span>
+                    <span id="progressText">0/7 completado</span>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-3">
+                    <div id="progressBar" class="progress-bar h-3 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-center space-x-4 flex-wrap gap-2">
+                <div class="flex space-x-2">
+                    <button id="controllerBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
+                        🔧 Controller
+                    </button>
+                    <button id="ispBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
+                        🔗 ISP
+                    </button>
+                </div>
+                <button id="showHintBtn" class="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg font-semibold transition-colors">
+                    💡 Mostrar Pista
+                </button>
+                <button id="resetBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
+                    🔄 Reiniciar
+                </button>
+                <!-- Nuevo botón de modo -->
+                <button id="modeSwitchBtn" class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
+                    🟢 Modo Easy
+                </button>
+            </div>
+        </div>
+
+        <!-- Hint Panel -->
+        <div id="hintPanel" class="hidden mb-8 p-6 bg-gradient-to-r from-yellow-900 to-orange-900 rounded-xl border border-yellow-600">
+            <h3 class="text-xl font-bold text-yellow-400 mb-4">💡 Pista - Patrón Controller</h3>
+            <div class="grid md:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <h4 class="text-red-400 font-bold mb-2">❌ Problema Actual:</h4>
+                    <ul class="text-red-200 space-y-1">
+                        <li>• Una sola clase hace todo</li>
+                        <li>• Mezcla UI, lógica y datos</li>
+                        <li>• Difícil de mantener y testear</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-green-400 font-bold mb-2">✅ Solución Controller:</h4>
+                    <ul class="text-green-200 space-y-1">
+                        <li>• Separar responsabilidades</li>
+                        <li>• Crear controladores específicos</li>
+                        <li>• Usar modelos para datos</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <!-- 1. Código Sin Controller (centrado y primero) -->
+<div class="max-w-2xl mx-auto mb-8">
+    <h2 id="badCodeTitle" class="text-2xl font-bold text-red-400 mb-6 flex items-center justify-center">
+        <span class="text-3xl mr-3">❌</span>
+        <span id="badCodeTitleText">Código Sin Controller</span>
+    </h2>
+    <div class="bg-gradient-to-br from-red-900 to-red-800 p-6 rounded-xl border border-red-600">
+        <pre class="text-red-100 text-sm font-mono overflow-x-auto"><code id="badCodeContent"># Código sin aplicar Controller
+class Restaurant:
+    def take_order(self):
+        name = input("👤 Ingrese su nombre: ")
+        item = input("🍽️ ¿Qué desea ordenar (Pizza / Pasta / Ensalada)? ")
+        print(f"Cliente {name} ordenó {item}")
+        
+        # Cocina
+        print(f"Preparando {item} en la cocina...")
+        
+        # Factura
+        print(f"Generando factura para {name} por {item}...")
+        print("✅ Pedido completado.")
+
+# Uso
+restaurant = Restaurant()
+restaurant.take_order()</code></pre>
+    </div>
+</div>
+
+<!-- 2. Fragmentos y Código Bueno en paralelo -->
+<div id="fragmentsGrid" class="grid lg:grid-cols-2 gap-8 mb-12">
+    <!-- 🧩 Fragmentos de Código -->
+    <div>
+        <h3 class="text-lg font-bold text-white mb-3 flex items-center">
+            <span class="text-2xl mr-2">🧩</span>
+            Fragmentos de Código
+        </h3>
+        <p class="text-gray-300 text-sm mb-4">Arrastra estos fragmentos al código correcto:</p>
+        <div id="codeFragments" class="space-y-3">
+            <!-- Los fragmentos se generan dinámicamente -->
+        </div>
+    </div>
+    <!-- ✅ Código Con Controller / Código Con ISP -->
+    <div>
+        <h2 id="goodCodeTitle" class="text-2xl font-bold text-green-400 mb-6 flex items-center">
+            <span class="text-3xl mr-3">✅</span>
+            <span id="goodCodeTitleText">Código Con Controller</span>
+        </h2>
+        <div class="bg-gradient-to-br from-green-900 to-green-800 p-6 rounded-xl border border-green-600">
+            <pre class="text-green-100 text-sm font-mono overflow-x-auto"><code id="goodCode"></code></pre>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Sección Monaco Editor Controller -->
+<div class="max-w-3xl mx-auto">
+    <!-- Sección Controller -->
+    <div id="controllerSection" class="mt-12 bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-xl border border-gray-700 max-w-3xl mx-auto">
+        <h2 class="text-xl font-bold text-white mb-2 flex items-center">
+            <span class="text-2xl mr-2">✍️</span>
+            Escribe tu solución Controller aquí
+        </h2>
+        <div id="controllerEditor" style="height:300px;border-radius:8px;border:1px solid #334155;"></div>
+        <button onclick="checkController()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold transition-colors">
+            Evaluar mi solución Controller
+        </button>
+        <div id="controllerFeedback" class="mt-4 text-sm bg-gray-700 text-white p-3 rounded"></div>
+    </div>
+    <!-- Sección ISP -->
+    <div id="ispSection" class="mt-12 bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-xl border border-gray-700 hidden">
+        <h2 class="text-xl font-bold text-white mb-2 flex items-center">
+            <span class="text-2xl mr-2">🔗</span>
+            Escribe tu solución ISP aquí
+        </h2>
+        <div id="ispEditor" style="height:300px;border-radius:8px;border:1px solid #334155;"></div>
+        <button onclick="checkISP()" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-semibold transition-colors">
+            Evaluar mi solución ISP
+        </button>
+        <div id="ispFeedback" class="mt-4 text-sm bg-gray-700 text-white p-3 rounded"></div>
+    </div>
+</div>
+
+        <!-- Success Modal -->
+        <div id="successModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-gradient-to-br from-green-500 to-emerald-600 p-8 rounded-2xl text-center max-w-lg mx-4 relative">
+                <button id="minimizeSuccessBtn" class="absolute top-3 right-3 text-white hover:text-green-200 text-2xl font-bold" title="Minimizar">&minus;</button>
+                <div class="text-6xl mb-4">🎉</div>
+                <h3 class="text-3xl font-bold text-white mb-4">¡Refactoring Completado!</h3>
+                <p class="text-xl text-green-100 mb-6">Has aplicado exitosamente el patrón Controller. El código ahora tiene:</p>
+                <ul class="text-left text-green-100 mb-6 space-y-2">
+                    <li>✅ Separación de responsabilidades</li>
+                    <li>✅ Controladores específicos</li>
+                    <li>✅ Modelo de datos independiente</li>
+                    <li>✅ Código más mantenible</li>
+                </ul>
+                <button id="goToEditorBtn" class="bg-white text-green-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+                    ✍️ Ir a escribir mi solución
+                </button>
+            </div>
+        </div>
+
+        <!-- Solution Modal -->
+        <div id="solutionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-gradient-to-br from-purple-600 to-indigo-700 p-6 rounded-2xl max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold text-white">👁️ Solución Completa</h3>
+                    <button id="closeSolutionBtn" class="text-white hover:text-gray-300 text-2xl">&times;</button>
+                </div>
+                <pre class="text-purple-100 text-sm font-mono bg-purple-900 bg-opacity-50 p-4 rounded overflow-x-auto"><code># Código aplicando Controller
+# --- Modelos ---
+class Order:
+    def __init__(self, customer, item):
+        self.customer = customer
+        self.item = item
+
+# --- Controladores ---
+class OrderController:
+    def take_order(self):
+        name = input("👤 Ingrese su nombre: ")
+        item = input("🍽️ ¿Qué desea ordenar (Pizza / Pasta / Ensalada)? ")
+        return Order(name, item)
+
+class KitchenController:
+    def prepare_order(self, order):
+        print(f"👨‍🍳 Preparando {order.item} para {order.customer}...")
+
+class BillingController:
+    def generate_bill(self, order):
+        print(f"🧾 Factura generada para {order.customer} por {order.item}")
+
+class RestaurantController:
+    def __init__(self):
+        self.order_controller = OrderController()
+        self.kitchen_controller = KitchenController()
+        self.billing_controller = BillingController()
+
+class OrderController:
+    def process_order(self):
+        order = self.order_controller.take_order()
+        self.kitchen_controller.prepare_order(order)
+        self.billing_controller.generate_bill(order)
+        print("✅ Pedido completado.")
+
+# Uso
+restaurant = RestaurantController()
+restaurant.process_order()</code></pre>
+            </div>
+        </div>
+
+        <!-- Sección de Respuesta con Monaco Editor para Controller -->
+
+
+        <!-- Sección de Respuesta con Monaco Editor para ISP -->
+        <div id="ispSection" class="mt-12 bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-xl border border-gray-700 max-w-3xl mx-auto hidden">
+          <h2 class="text-xl font-bold text-white mb-2 flex items-center">
+            <span class="text-2xl mr-2">🔗</span>
+            Escribe tu solución ISP aquí
+          </h2>
+          <div id="ispEditor" style="height:300px;border-radius:8px;border:1px solid #334155;"></div>
+          <button onclick="checkISP()" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-semibold transition-colors">
+            Evaluar mi solución ISP
+          </button>
+          <div id="ispFeedback" class="mt-4 text-sm bg-gray-700 text-white p-3 rounded"></div>
+        </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/loader.min.js"></script>
+        <script>
+          let controllerEditor, ispEditor;
+
+          // Configurar Monaco
+          require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs' }});
+          require(["vs/editor/editor.main"], function () {
+            controllerEditor = monaco.editor.create(document.getElementById("controllerEditor"), {
+              value: "# Escribe aquí tu código refactorizado usando Controller...",
+              language: "python",
+              theme: "vs-dark",
+              fontSize: 14,
+              automaticLayout: true
+            });
+
+            ispEditor = monaco.editor.create(document.getElementById("ispEditor"), {
+              value: "# Escribe aquí tu código refactorizado usando ISP...",
+              language: "python",
+              theme: "vs-dark",
+              fontSize: 14,
+              automaticLayout: true
+            });
+          });
+
+          // Evaluador simple para patrón Controller
+          function checkController() {
+            const code = controllerEditor.getValue();
+            let feedback = [];
+
+            if (code.match(/print\(.*factura/i)) {
+              feedback.push("<span class='text-green-400'>✅ Se genera factura correctamente.</span>");
+            } else {
+              feedback.push("<span class='text-yellow-400'>⚠️ No se detecta generación de factura.</span>");
+            }
+
+            if (code.includes("class RestaurantController")) {
+              feedback.push("<span class='text-green-400'>✅ Se detecta RestaurantController como orquestador.</span>");
+            } else {
+              feedback.push("<span class='text-red-400'>❌ No se detecta RestaurantController.</span>");
+            }
+
+            if (code.includes("class OrderController") && code.includes("class KitchenController") && code.includes("class BillingController")) {
+              feedback.push("<span class='text-green-400'>✅ Separación de responsabilidades detectada.</span>");
+            } else {
+              feedback.push("<span class='text-yellow-400'>⚠️ Faltan controladores específicos.</span>");
+            }
+
+            // NUEVO: Verificar el uso correcto al final
+            if (
+              code.match(/restaurant\s*=\s*RestaurantController\s*\(\s*\)/) &&
+              code.match(/restaurant\.process_order\s*\(\s*\)/)
+            ) {
+              feedback.push("<span class='text-green-400'>✅ Se detecta el uso correcto de RestaurantController.</span>");
+            } else {
+              feedback.push("<span class='text-yellow-400'>⚠️ No se detecta el uso de RestaurantController al final.</span>");
+            }
+
+            document.getElementById("controllerFeedback").innerHTML = feedback.join("<br>");
+          }
+
+          // Evaluador simple para ISP
+          function checkISP() {
+            const code = ispEditor.getValue();
+            let feedback = [];
+
+            // Debe haber clases Printer, Scanner y Fax
+            if (
+              code.match(/class\s+Printer\b/) &&
+              code.match(/class\s+Scanner\b/) &&
+              code.match(/class\s+Fax\b/)
+            ) {
+              feedback.push("<span class='text-green-400'>✅ Se detectan interfaces Printer, Scanner y Fax.</span>");
+            } else {
+              feedback.push("<span class='text-yellow-400'>⚠️ Faltan interfaces Printer, Scanner o Fax.</span>");
+            }
+
+            // Debe haber clase SimplePrinter que solo implemente print_document
+            if (
+              code.match(/class\s+SimplePrinter\s*\(\s*Printer\s*\)/) &&
+              code.match(/def\s+print_document\(.*\):/)
+            ) {
+              feedback.push("<span class='text-green-400'>✅ SimplePrinter implementa correctamente print_document.</span>");
+            } else {
+              feedback.push("<span class='text-yellow-400'>⚠️ SimplePrinter no implementa correctamente print_document.</span>");
+            }
+
+            // Debe haber clase MultiFunctionPrinter que herede de Printer, Scanner, Fax
+            if (
+              code.match(/class\s+MultiFunctionPrinter\s*\(\s*Printer\s*,\s*Scanner\s*,\s*Fax\s*\)/)
+            ) {
+              feedback.push("<span class='text-green-400'>✅ MultiFunctionPrinter hereda de Printer, Scanner y Fax.</span>");
+            } else {
+              feedback.push("<span class='text-yellow-400'>⚠️ MultiFunctionPrinter no hereda correctamente de las interfaces.</span>");
+            }
+
+            // Debe haber uso de SimplePrinter y MultiFunctionPrinter
+            if (
+              code.match(/printer\s*=\s*SimplePrinter\s*\(\s*\)/) &&
+              code.match(/printer\.print_document\s*\(/)
+            ) {
+              feedback.push("<span class='text-green-400'>✅ Se detecta el uso de SimplePrinter.</span>");
+            } else {
+              feedback.push("<span class='text-yellow-400'>⚠️ No se detecta el uso de SimplePrinter.</span>");
+            }
+
+            if (
+              code.match(/mfp\s*=\s*MultiFunctionPrinter\s*\(\s*\)/) &&
+              code.match(/mfp\.print_document\s*\(/) &&
+              code.match(/mfp\.scan_document\s*\(/) &&
+              code.match(/mfp\.fax_document\s*\(/)
+            ) {
+              feedback.push("<span class='text-green-400'>✅ Se detecta el uso de MultiFunctionPrinter con todos sus métodos.</span>");
+            } else {
+              feedback.push("<span class='text-yellow-400'>⚠️ No se detecta el uso completo de MultiFunctionPrinter.</span>");
+            }
+
+            document.getElementById("ispFeedback").innerHTML = feedback.join("<br>");
+          }
+        </script>
+    </div>
+
+    <script>
+        const controllerFragments = [
+            {
+                id: 1,
+                code: `class Order:
+    def __init__(self, customer, item):
+        self.customer = customer
+        self.item = item`,
+                target: 'drop1'
+            },
+            {
+                id: 2,
+                code: `class OrderController:
+    def take_order(self):
+        name = input("👤 Ingrese su nombre: ")
+        item = input("🍽️ ¿Qué desea ordenar (Pizza / Pasta / Ensalada)? ")
+        return Order(name, item)`,
+                target: 'drop2'
+            },
+            {
+                id: 3,
+                code: `class KitchenController:
+    def prepare_order(self, order):
+        print(f"👨‍🍳 Preparando {order.item} para {order.customer}...")`,
+                target: 'drop3'
+            },
+            {
+                id: 4,
+                code: `class BillingController:
+    def generate_bill(self, order):
+        print(f"🧾 Factura generada para {order.customer} por {order.item}")`,
+                target: 'drop4'
+            },
+            {
+                id: 5,
+                code: `class RestaurantController:
+    def __init__(self):
+        self.order_controller = OrderController()
+        self.kitchen_controller = KitchenController()
+        self.billing_controller = BillingController()`,
+                target: 'drop5'
+            },
+            {
+                id: 6,
+                code: `class OrderController:
+    def process_order(self):
+        order = self.order_controller.take_order()
+        self.kitchen_controller.prepare_order(order)
+        self.billing_controller.generate_bill(order)
+        print("✅ Pedido completado.")`,
+                target: 'drop6'
+            },
+            {
+                id: 7,
+                code: `restaurant = RestaurantController()
+restaurant.process_order()`,
+                target: 'drop7'
+            }
+        ];
+
+        const ispFragments = [
+            {
+                id: 1,
+                code: `class Printer:
+    def print_document(self, text):
+        pass`,
+                target: 'drop1'
+            },
+            {
+                id: 2,
+                code: `class Scanner:
+    def scan_document(self):
+        pass`,
+                target: 'drop2'
+            },
+            {
+                id: 3,
+                code: `class Fax:
+    def fax_document(self, number):
+        pass`,
+                target: 'drop3'
+            },
+            {
+                id: 4,
+                code: `class SimplePrinter(Printer):
+    def print_document(self, text):
+        print(f"🖨️ Imprimiendo: {text}")`,
+                target: 'drop4'
+            },
+            {
+                id: 5,
+                code: `class MultiFunctionPrinter(Printer, Scanner, Fax):
+    def print_document(self, text):
+        print(f"🖨️ Imprimiendo: {text}")
+    def scan_document(self):
+        print("📠 Escaneando documento...")
+    def fax_document(self, number):
+        print(f"📡 Enviando fax al número {number}...")`,
+                target: 'drop5'
+            },
+            {
+                id: 6,
+                code: `print("=== Simple Printer ===")
+printer = SimplePrinter()
+printer.print_document("Contrato laboral")`,
+                target: 'drop6'
+            },
+            {
+                id: 7,
+                code: `print("\\n=== Multi Function Printer ===")
+mfp = MultiFunctionPrinter()
+mfp.print_document("Informe financiero")
+mfp.scan_document()
+mfp.fax_document("321654987")`,
+                target: 'drop7'
+            }
+        ];
+
+        let currentActivity = 'controller';
+        let codeFragments = controllerFragments;
+
+        let completedFragments = 0;
+        let draggedElement = null;
+
+        function switchActivity(activity) {
+            currentActivity = activity;
+            // Cambiar títulos según actividad
+            const badCodeTitleText = document.getElementById('badCodeTitleText');
+            const goodCodeTitleText = document.getElementById('goodCodeTitleText');
+            if (activity === 'controller') {
+                badCodeTitleText.textContent = "Código Sin Controller";
+                goodCodeTitleText.textContent = "Código Con Controller";
+                codeFragments = controllerFragments;
+                document.getElementById('subtitle').textContent = 'Transforma el código malo aplicando el patrón Controller';
+                updateBadCodeSection('controller');
+                updateGoodCodeSection('controller');
+                // Mostrar solo sección Controller
+                document.getElementById('controllerSection').classList.remove('hidden');
+                document.getElementById('ispSection').classList.add('hidden');
+            } else {
+                badCodeTitleText.textContent = "Código Sin ISP";
+                goodCodeTitleText.textContent = "Código Con ISP";
+                codeFragments = ispFragments;
+                document.getElementById('subtitle').textContent = 'Transforma el código malo aplicando el principio ISP';
+                updateBadCodeSection('isp');
+                updateGoodCodeSection('isp');
+                // Mostrar solo sección ISP
+                document.getElementById('controllerSection').classList.add('hidden');
+                document.getElementById('ispSection').classList.remove('hidden');
+            }
+            initGame();
+        }
+
+        function updateBadCodeSection(type) {
+            const badCodeContent = type === 'controller' ? 
+                `# Código sin aplicar Controller
+class Restaurant:
+    def take_order(self):
+        name = input("👤 Ingrese su nombre: ")
+        item = input("🍽️ ¿Qué desea ordenar (Pizza / Pasta / Ensalada)? ")
+        print(f"Cliente {name} ordenó {item}")
+        
+        # Cocina
+        print(f"Preparando {item} en la cocina...")
+        
+        # Factura
+        print(f"Generando factura para {name} por {item}...")
+        print("✅ Pedido completado.")
+
+# Uso
+restaurant = Restaurant()
+restaurant.take_order()` :
+                `# Código sin aplicar ISP
+class Machine:
+    def print_document(self, text):
+        pass
+    def scan_document(self):
+        pass
+    def fax_document(self, number):
+        pass
+
+class SimplePrinter(Machine):
+    def print_document(self, text):
+        print(f"🖨️ Imprimiendo: {text}")
+    def scan_document(self):
+        # Método inútil
+        print("❌ Esta impresora no puede escanear.")
+    def fax_document(self, number):
+        # Método inútil
+        print("❌ Esta impresora no puede enviar fax.")
+
+# Uso
+printer = SimplePrinter()
+printer.print_document("Contrato laboral")
+printer.scan_document()   # Error lógico
+printer.fax_document("123456") # Error lógico`;
+
+            const badCodeElement = document.querySelector('.bg-gradient-to-br.from-red-900 pre code');
+            badCodeElement.textContent = badCodeContent;
+        }
+
+        function updateGoodCodeSection(type) {
+            const goodCodeElement = document.getElementById('goodCode');
+            if (type === 'controller') {
+                goodCodeElement.innerHTML = `# Código aplicando Controller
+# --- Modelos ---
+<div id="drop1" class="drop-zone inline-block min-w-[200px] min-h-[60px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600">
+    <span class="text-gray-400 text-xs">Arrastra el modelo aquí</span>
+</div>
+
+# --- Controladores ---
+<div id="drop2" class="drop-zone inline-block min-w-[200px] min-h-[80px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600">
+    <span class="text-gray-400 text-xs">Arrastra un controlador aquí</span>
+</div>
+
+<div id="drop3" class="drop-zone inline-block min-w-[200px] min-h-[60px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600">
+    <span class="text-gray-400 text-xs">Arrastra un controlador aquí</span>
+</div>
+
+<div id="drop4" class="drop-zone inline-block min-w-[200px] min-h-[60px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600">
+    <span class="text-gray-400 text-xs">Arrastra un controlador aquí</span>
+</div>
+
+<div id="drop5" class="drop-zone inline-block min-w-[200px] min-h-[120px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600">
+    <span class="text-gray-400 text-xs">Arrastra un controlador aquí</span>
+</div>
+
+<div id="drop6" class="drop-zone inline-block min-w-[200px] min-h-[80px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600">
+    <span class="text-gray-400 text-xs">Arrastra un controlador aquí</span>
+</div>
+
+# Uso
+<div id="drop7" class="drop-zone inline-block min-w-[200px] min-h-[40px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600">
+    <span class="text-gray-400 text-xs">Arrastra el uso final aquí</span>
+</div>`;
+            } else {
+                goodCodeElement.innerHTML = `# Código aplicando ISP
+# --- Interfaces separadas ---
+<div id="drop1" class="drop-zone inline-block min-w-[200px] min-h-[60px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600">
+    <span class="text-gray-400 text-xs">Arrastra una interface aquí</span>
+</div>
+
+<div id="drop2" class="drop-zone inline-block min-w-[200px] min-h-[60px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600">
+    <span class="text-gray-400 text-xs">Arrastra una interface aquí</span>
+</div>
+
+<div id="drop3" class="drop-zone inline-block min-w-[200px] min-h-[60px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600">
+    <span class="text-gray-400 text-xs">Arrastra una interface aquí</span>
+</div>
+
+# Clases concretas
+<div id="drop4" class="drop-zone inline-block min-w-[200px] min-h-[60px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600">
+    <span class="text-gray-400 text-xs">Arrastra una clase aquí</span>
+</div>
+
+<div id="drop5" class="drop-zone inline-block min-w-[200px] min-h-[120px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600">
+    <span class="text-gray-400 text-xs">Arrastra una clase aquí</span>
+</div>
+
+# Uso
+<div id="drop6" class="drop-zone inline-block min-w-[200px] min-h-[60px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600">
+    <span class="text-gray-400 text-xs">Arrastra un uso aquí</span>
+</div>
+
+<div id="drop7" class="drop-zone inline-block min-w-[200px] min-h-[80px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600">
+    <span class="text-gray-400 text-xs">Arrastra un uso aquí</span>
+</div>`;
+            }
+        }
+
+        function initGame() {
+            completedFragments = 0;
+            updateProgress();
+            renderFragments();
+            resetDropZones();
+        }
+
+        function renderFragments() {
+            const container = document.getElementById('codeFragments');
+            container.innerHTML = '';
+            
+            // Mezclar fragmentos
+            const shuffled = [...codeFragments].sort(() => Math.random() - 0.5);
+            
+            shuffled.forEach((fragment, index) => {
+                const div = document.createElement('div');
+                div.className = 'code-snippet p-3 rounded-lg cursor-move select-none slide-in';
+                div.style.animationDelay = `${index * 0.1}s`;
+                div.draggable = true;
+                div.dataset.id = fragment.id;
+                div.dataset.target = fragment.target;
+                
+                div.innerHTML = `
+                    <div class="flex items-start">
+                        <span class="text-blue-400 text-lg mr-2">📝</span>
+                        <pre class="text-gray-200 text-xs font-mono flex-1 overflow-x-auto">${fragment.code}</pre>
+                    </div>
+                `;
+                
+                div.addEventListener('dragstart', handleDragStart);
+                div.addEventListener('dragend', handleDragEnd);
+                
+                container.appendChild(div);
+            });
+        }
+
+        function resetDropZones() {
+            for (let i = 1; i <= 7; i++) {
+                const dropZone = document.getElementById(`drop${i}`);
+                dropZone.className = 'drop-zone inline-block min-w-[200px] min-h-[60px] p-2 rounded border-2 border-dashed border-gray-400 bg-gray-600';
+                dropZone.innerHTML = `<span class="text-gray-400 text-xs">${getDropZoneText(i)}</span>`;
+                
+                dropZone.addEventListener('dragover', handleDragOver);
+                dropZone.addEventListener('drop', handleDrop);
+                dropZone.addEventListener('dragleave', handleDragLeave);
+            }
+        }
+
+        function getDropZoneText(dropNumber) {
+            if (currentActivity === 'controller') {
+                const texts = {
+                    1: 'Arrastra el modelo aquí',
+                    2: 'Arrastra un controlador aquí',
+                    3: 'Arrastra un controlador aquí',
+                    4: 'Arrastra un controlador aquí',
+                    5: 'Arrastra un controlador aquí',
+                    6: 'Arrastra un controlador aquí',
+                    7: 'Arrastra el uso final aquí'
+                };
+                return texts[dropNumber];
+            } else {
+                const texts = {
+                    1: 'Arrastra una interface aquí',
+                    2: 'Arrastra una interface aquí',
+                    3: 'Arrastra una interface aquí',
+                    4: 'Arrastra una clase aquí',
+                    5: 'Arrastra una clase aquí',
+                    6: 'Arrastra un uso aquí',
+                    7: 'Arrastra un uso aquí'
+                };
+                return texts[dropNumber];
+            }
+        }
+
+        function handleDragStart(e) {
+            draggedElement = e.target;
+            e.target.classList.add('dragging');
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.target.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.target.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const dropZone = e.target;
+            dropZone.classList.remove('drag-over');
+
+            // --- Cambios para ISP: permitir cualquier fragmento en cualquier dropzone de su sección ---
+    if (currentActivity === 'isp') {
+        // Interfaces: drop1, drop2, drop3 (fragmentos 1,2,3)
+        const interfaceDropIds = ['drop1', 'drop2', 'drop3'];
+        // Clases: drop4, drop5 (fragmentos 4,5)
+        const classDropIds = ['drop4', 'drop5'];
+        // Usos: drop6, drop7 (fragmentos 6,7)
+        const usoDropIds = ['drop6', 'drop7'];
+
+        if (
+            (interfaceDropIds.includes(dropZone.id) && [1,2,3].includes(Number(draggedElement.dataset.id)) && !dropZone.classList.contains('filled')) ||
+            (classDropIds.includes(dropZone.id) && [4,5].includes(Number(draggedElement.dataset.id)) && !dropZone.classList.contains('filled')) ||
+            (usoDropIds.includes(dropZone.id) && [6,7].includes(Number(draggedElement.dataset.id)) && !dropZone.classList.contains('filled'))
+        ) {
+            const fragment = codeFragments.find(f => f.id == draggedElement.dataset.id);
+
+            dropZone.classList.add('filled', 'pulse-success', 'glow');
+            dropZone.innerHTML = `<pre class="text-green-100 text-xs font-mono">${fragment.code}</pre>`;
+
+            draggedElement.style.display = 'none';
+            completedFragments++;
+            updateProgress();
+
+            if (completedFragments === codeFragments.length) {
+                setTimeout(() => {
+                    document.getElementById('successModal').classList.remove('hidden');
+                }, 1000);
+            }
+            return;
+        }
+    }
+
+    // --- Para Controller, mantener la lógica existente ---
+    const controllerDropIds = ['drop2', 'drop3', 'drop4', 'drop5', 'drop6'];
+    if (
+        currentActivity === 'controller' &&
+        controllerDropIds.includes(dropZone.id)
+    ) {
+        if (
+            draggedElement &&
+            [2, 3, 4, 5, 6].includes(Number(draggedElement.dataset.id)) &&
+            !dropZone.classList.contains('filled')
+        ) {
+            const fragment = codeFragments.find(f => f.id == draggedElement.dataset.id);
+
+            dropZone.classList.add('filled', 'pulse-success', 'glow');
+            dropZone.innerHTML = `<pre class="text-green-100 text-xs font-mono">${fragment.code}</pre>`;
+
+            draggedElement.style.display = 'none';
+            completedFragments++;
+            updateProgress();
+
+            if (completedFragments === codeFragments.length) {
+                setTimeout(() => {
+                    document.getElementById('successModal').classList.remove('hidden');
+                }, 1000);
+            }
+            return;
+        }
+    }
+
+    // Comportamiento normal para el resto de zonas
+    if (draggedElement && dropZone.id === draggedElement.dataset.target && !dropZone.classList.contains('filled')) {
+        const fragment = codeFragments.find(f => f.id == draggedElement.dataset.id);
+
+        dropZone.classList.add('filled', 'pulse-success', 'glow');
+        dropZone.innerHTML = `<pre class="text-green-100 text-xs font-mono">${fragment.code}</pre>`;
+
+        draggedElement.style.display = 'none';
+        completedFragments++;
+        updateProgress();
+
+        if (completedFragments === codeFragments.length) {
+            setTimeout(() => {
+                document.getElementById('successModal').classList.remove('hidden');
+            }, 1000);
+        }
+    } else {
+        dropZone.classList.add('shake');
+        setTimeout(() => {
+            dropZone.classList.remove('shake');
+        }, 500);
+    }
+        }
+
+        function updateProgress() {
+            const percentage = (completedFragments / codeFragments.length) * 100;
+            document.getElementById('progressBar').style.width = `${percentage}%`;
+            document.getElementById('progressText').textContent = `${completedFragments}/${codeFragments.length} completado`;
+        }
+
+        function showHint() {
+            const hintContent = document.getElementById('hintPanel');
+            const hintText = hintContent.querySelector('h3');
+            const hintBody = hintContent.querySelector('.grid');
+            
+            if (currentActivity === 'controller') {
+                hintText.innerHTML = '💡 Pista - Patrón Controller';
+                hintBody.innerHTML = `
+                    <div>
+                        <h4 class="text-red-400 font-bold mb-2">❌ Problema Actual:</h4>
+                        <ul class="text-red-200 space-y-1">
+                            <li>• Una sola clase hace todo</li>
+                            <li>• Mezcla UI, lógica y datos</li>
+                            <li>• Difícil de mantener y testear</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="text-green-400 font-bold mb-2">✅ Solución Controller:</h4>
+                        <ul class="text-green-200 space-y-1">
+                            <li>• Separar responsabilidades</li>
+                            <li>• Crear controladores específicos</li>
+                            <li>• Usar modelos para datos</li>
+                        </ul>
+                    </div>
+                `;
+            } else {
+                hintText.innerHTML = '💡 Pista - Principio ISP';
+                hintBody.innerHTML = `
+                    <div>
+                        <h4 class="text-red-400 font-bold mb-2">❌ Problema Actual:</h4>
+                        <ul class="text-red-200 space-y-1">
+                            <li>• Interface muy grande</li>
+                            <li>• Clases implementan métodos inútiles</li>
+                            <li>• Violación del principio ISP</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="text-green-400 font-bold mb-2">✅ Solución ISP:</h4>
+                        <ul class="text-green-200 space-y-1">
+                            <li>• Interfaces pequeñas y específicas</li>
+                            <li>• Cada clase implementa solo lo que necesita</li>
+                            <li>• Mayor flexibilidad y mantenibilidad</li>
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            hintContent.classList.toggle('hidden');
+        }
+
+        function showSolution() {
+            const solutionCode = document.querySelector('#solutionModal pre code');
+
+            if (currentActivity === 'controller') {
+                solutionCode.textContent = `# Código aplicando Controller
+# --- Modelos ---
+class Order:
+    def __init__(self, customer, item):
+        self.customer = customer
+        self.item = item
+
+# --- Controladores ---
+class OrderController:
+    def take_order(self):
+        name = input("👤 Ingrese su nombre: ")
+        item = input("🍽️ ¿Qué desea ordenar (Pizza / Pasta / Ensalada)? ")
+        return Order(name, item)
+
+class KitchenController:
+    def prepare_order(self, order):
+        print(f"👨‍🍳 Preparando {order.item} para {order.customer}...")
+
+class BillingController:
+    def generate_bill(self, order):
+        print(f"🧾 Factura generada para {order.customer} por {order.item}")
+
+class RestaurantController:
+    def __init__(self):
+        self.order_controller = OrderController()
+        self.kitchen_controller = KitchenController()
+        self.billing_controller = BillingController()
+
+class OrderController:
+    def process_order(self):
+        order = self.order_controller.take_order()
+        self.kitchen_controller.prepare_order(order)
+        self.billing_controller.generate_bill(order)
+        print("✅ Pedido completado.")
+
+# Uso
+restaurant = RestaurantController()
+restaurant.process_order()`;
+            } else {
+                solutionCode.textContent = `# Código aplicando ISP
+# --- Interfaces separadas ---
+class Printer:
+    def print_document(self, text):
+        pass
+
+class Scanner:
+    def scan_document(self):
+        pass
+
+class Fax:
+    def fax_document(self, number):
+        pass
+
+# Clases concretas
+class SimplePrinter(Printer):
+    def print_document(self, text):
+        print(f"🖨️ Imprimiendo: ${text}")
+
+
+class MultiFunctionPrinter(Printer, Scanner, Fax):
+    def print_document(self, text):
+        print(f"🖨️ Imprimiendo: ${text}")
+
+    def scan_document(self):
+        print("📠 Escaneando documento...")
+
+    def fax_document(self, number):
+        print(f"📡 Enviando fax al número ${number}...")
+
+# Uso
+print("=== Simple Printer ===")
+printer = SimplePrinter()
+printer.print_document("Contrato laboral")
+
+print("\\n=== Multi Function Printer ===")
+mfp = MultiFunctionPrinter()
+mfp.print_document("Informe financiero")
+mfp.scan_document()
+mfp.fax_document("321654987")`;
+            }
+            
+            document.getElementById('solutionModal').classList.remove('hidden');
+        }
+
+        function closeSolution() {
+            document.getElementById('solutionModal').classList.add('hidden');
+        }
+
+        // Event Listeners
+        document.getElementById('controllerBtn').addEventListener('click', () => {
+            switchActivity('controller');
+            document.getElementById('controllerBtn').classList.add('bg-blue-600');
+            document.getElementById('controllerBtn').classList.remove('bg-blue-500');
+            document.getElementById('ispBtn').classList.add('bg-indigo-500');
+            document.getElementById('ispBtn').classList.remove('bg-indigo-600');
+        });
+        
+        document.getElementById('ispBtn').addEventListener('click', () => {
+            switchActivity('isp');
+            document.getElementById('ispBtn').classList.add('bg-indigo-600');
+            document.getElementById('ispBtn').classList.remove('bg-indigo-500');
+            document.getElementById('controllerBtn').classList.add('bg-blue-500');
+            document.getElementById('controllerBtn').classList.remove('bg-blue-600');
+        });
+        
+        document.getElementById('showHintBtn').addEventListener('click', showHint);
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            initGame();
+            // Limpiar Monaco Editor y feedbacks
+            if (window.controllerEditor) {
+                controllerEditor.setValue("# Escribe aquí tu código refactorizado usando Controller...");
+                document.getElementById('controllerFeedback').innerHTML = "";
+            }
+            if (window.ispEditor) {
+                ispEditor.setValue("# Escribe aquí tu código refactorizado usando ISP...");
+                document.getElementById('ispFeedback').innerHTML = "";
+            }
+        });
+        document.getElementById('closeSolutionBtn').addEventListener('click', closeSolution);
+        document.getElementById('goToEditorBtn').addEventListener('click', () => {
+            document.getElementById('successModal').classList.add('hidden');
+            // Scroll suave a la sección del editor
+            const editorSection = document.getElementById('controllerEditor');
+            if (editorSection) {
+                editorSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Opcional: enfocar el editor Monaco si está disponible
+                setTimeout(() => {
+                    if (window.controllerEditor) controllerEditor.focus();
+                }, 600);
+            }
+        });
+        document.getElementById('minimizeSuccessBtn').addEventListener('click', () => {
+            document.getElementById('successModal').classList.add('hidden');
+        });
+
+        // Modo Easy/Hardcore
+    let mode = 'easy'; // easy | hardcore
+
+    function updateModeUI() {
+        const fragmentsGrid = document.getElementById('fragmentsGrid');
+        const controllerSection = document.getElementById('controllerSection');
+        const ispSection = document.getElementById('ispSection');
+        // Solo afecta la sección activa
+        if (currentActivity === 'controller') {
+            if (mode === 'easy') {
+                fragmentsGrid.classList.remove('hidden');
+                controllerSection.classList.remove('mt-0');
+                document.getElementById('modeSwitchBtn').innerHTML = '🟢 Modo Easy';
+                document.getElementById('modeSwitchBtn').classList.remove('bg-pink-600');
+                document.getElementById('modeSwitchBtn').classList.add('bg-gray-700');
+            } else {
+                fragmentsGrid.classList.add('hidden');
+                controllerSection.classList.add('mt-0');
+                document.getElementById('modeSwitchBtn').innerHTML = '🔥 Modo Hardcore';
+                document.getElementById('modeSwitchBtn').classList.remove('bg-gray-700');
+                document.getElementById('modeSwitchBtn').classList.add('bg-pink-600');
+            }
+            // Siempre mostrar controllerSection, ocultar ispSection
+            controllerSection.classList.remove('hidden');
+            ispSection.classList.add('hidden');
+        } else {
+            if (mode === 'easy') {
+                fragmentsGrid.classList.remove('hidden');
+                ispSection.classList.remove('mt-0');
+                document.getElementById('modeSwitchBtn').innerHTML = '🟢 Modo Easy';
+                document.getElementById('modeSwitchBtn').classList.remove('bg-pink-600');
+                document.getElementById('modeSwitchBtn').classList.add('bg-gray-700');
+            } else {
+                fragmentsGrid.classList.add('hidden');
+                ispSection.classList.add('mt-0');
+                document.getElementById('modeSwitchBtn').innerHTML = '🔥 Modo Hardcore';
+                document.getElementById('modeSwitchBtn').classList.remove('bg-gray-700');
+                document.getElementById('modeSwitchBtn').classList.add('bg-pink-600');
+            }
+            // Siempre mostrar ispSection, ocultar controllerSection
+            ispSection.classList.remove('hidden');
+            controllerSection.classList.add('hidden');
+        }
+    }
+
+    // Botón de modo
+    document.getElementById('modeSwitchBtn').addEventListener('click', () => {
+        mode = (mode === 'easy') ? 'hardcore' : 'easy';
+        updateModeUI();
+    });
+
+    // Al cambiar de actividad, actualizar modo UI
+    const oldSwitchActivity = switchActivity;
+    switchActivity = function(activity) {
+        oldSwitchActivity(activity);
+        updateModeUI();
+    };
+
+    // Al cargar la página, actualizar modo UI
+    document.addEventListener('DOMContentLoaded', updateModeUI);
+
+    // Inicializar con Controller activo
+    document.getElementById('controllerBtn').classList.add('bg-blue-600');
+    document.getElementById('controllerBtn').classList.remove('bg-blue-500');
+    switchActivity('controller'); // <-- Asegura que siempre inicia en Controller
+    initGame();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97889742a39316ac',t:'MTc1Njc2OTc5Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
